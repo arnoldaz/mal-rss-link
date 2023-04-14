@@ -6,11 +6,12 @@ from urllib.parse import urlencode
 
 import requests
 from dotenv import load_dotenv
+from colorama import Fore
 
 class MalEntryManager:
     """Class for querying and parsing entry data from MAL API."""
 
-    def __init__(self, client_id: str, mal_username: str):
+    def __init__(self, client_id: str, mal_username: str) -> None:
         if not client_id or not mal_username:
             raise ValueError("client_id or mal_username is invalid")
 
@@ -54,13 +55,16 @@ class MalEntryManager:
         watching_query_params = { "status": "watching", **base_query_params }
         plan_to_watch_query_params = { "status": "plan_to_watch", **base_query_params }
 
+        print("Querying list of user entries...")
         url = f"{self.mal_anime_list_url}?{urlencode(watching_query_params)}"
-        watching_json_data = self._get_mal_json_response(url)
+        watching_json_data = self._get_mal_json_response(url)["data"]
+        print(f"Found {Fore.CYAN}{len(watching_json_data)}{Fore.RESET} entries from watching list")
 
         url = f"{self.mal_anime_list_url}?{urlencode(plan_to_watch_query_params)}"
-        plan_to_watch_json_data = self._get_mal_json_response(url)
+        plan_to_watch_json_data = self._get_mal_json_response(url)["data"]
+        print(f"Found {Fore.CYAN}{len(plan_to_watch_json_data)}{Fore.RESET} entries from plan to watch list")
 
-        return [entry["node"]["id"] for entry in watching_json_data["data"] + plan_to_watch_json_data["data"]]
+        return [entry["node"]["id"] for entry in watching_json_data + plan_to_watch_json_data]
 
     def _entry_airing_filter(self, entry: dict[str, Any], season: str, year: int) -> bool:
         """Filter function to return true only for entries which are from current cour or currently airing."""
@@ -76,10 +80,15 @@ class MalEntryManager:
     def get_filtered_entry_names(self, entryIds: list[int]) -> list[list[str]]:
         """Filters entries to only current season or currently airing and returns list of lists of their names."""
         season, year = self._get_current_cour()
+        print(f"Calculated current cour to {Fore.CYAN}{year} {season}{Fore.RESET}")
+
+        print("Querying detailed info for each entry...")
         entries_details = [self.get_entry_details(id) for id in entryIds]
 
+        print("Filtering queried detailed user entries by current cour...")
         filtered_entries_details = filter(lambda entry: self._entry_airing_filter(entry, season, year), entries_details)
         entries_names: list[list[str]] = [[entry["title"], entry["alternative_titles"]["en"], *entry["alternative_titles"]["synonyms"]] for entry in filtered_entries_details]
+        print(f"Filtered to {Fore.CYAN}{len(entries_names)}{Fore.RESET} entries")
 
         return [[name for name in set(entry_names) if name] for entry_names in entries_names]
 
@@ -92,11 +101,7 @@ def main() -> None:
         raise Exception("Environment file is not configured correctly")
 
     mal_entry_manager = MalEntryManager(CLIENT_ID, MAL_USERNAME)
-
-    print("Querying list of user entries...")
     ids = mal_entry_manager.get_entry_list_ids()
-
-    print("Filtering queried user entries by current season...")
     filtered_entry_names = mal_entry_manager.get_filtered_entry_names(ids)
 
     print("Filtered entry names list:")

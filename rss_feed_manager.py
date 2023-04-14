@@ -1,7 +1,9 @@
-from urllib.parse import urlencode
-import requests
-import xml.etree.ElementTree as ET
 import re
+import xml.etree.ElementTree as ET
+from urllib.parse import urlencode
+
+import requests
+from colorama import Fore
 
 class RssFeedManager:
     
@@ -17,7 +19,7 @@ class RssFeedManager:
         pass
     
     def _feed_has_entries(self, rss_url: str) -> bool:
-        """Checks whether passed RSS feed has any entries."""
+        """Checks whether RSS feed has any entries."""
         response = requests.get(rss_url)
         root = ET.fromstring(response.content)
         return len(root.findall(".//item")) > 0
@@ -29,6 +31,7 @@ class RssFeedManager:
         :param list[str] entry_names: List of combined entry names.
         :param bool requires_entries: Checks RSS feed will all possible subbers and will only add URL to the list if feed has any entries.
         """
+        indent = "  "
         url_list = []
         for entry_name in entry_names:
             found_url = False
@@ -38,16 +41,26 @@ class RssFeedManager:
 
                 if not requires_entries or self._feed_has_entries(potential_url):
                     if requires_entries:
-                        print(f"\nFound entries for:\n  Name:\n    {entry_name}\n  Subber:\n    {subber}")
+                        print("Found entries for:")
+                        print(f"{indent}Combined name:")
+                        print(f"{indent * 2}{Fore.CYAN}{entry_name}{Fore.RESET}")
+                        print(f"{indent}Subber:")
+                        print(f"{indent * 2}{Fore.BLUE if subber == self.SUBBER_LIST[0] else Fore.YELLOW}{subber}{Fore.RESET}")
                     else:
-                        print(f"\nAdded URL with for default subber:\n  Name:\n    {entry_name}\n  Subber:\n    {subber}")
+                        print("Added URL with default subber:")
+                        print(f"{indent}Combined name:")
+                        print(f"{indent * 2}{Fore.CYAN}{entry_name}{Fore.RESET}")
+                        print(f"{indent}Subber:")
+                        print(f"{indent * 2}{Fore.BLUE}{subber}{Fore.RESET}")
 
                     url_list.append(potential_url)
                     found_url = True
                     break
             
             if not found_url:
-                print(f"Not found any entries for:\n  Name:\n    {entry_name}")
+                print(f"{Fore.RED}Not found any entries for:{Fore.RESET}")
+                print(f"{indent}Combined name:")
+                print(f"{indent * 2}{Fore.CYAN}{entry_name}{Fore.RESET}")
 
         return url_list
         
@@ -69,7 +82,7 @@ class RssFeedManager:
                     additional_entry_names.append(first_part)
                 
                 # Remove all instances of word "season" with a number afterwards
-                additional_entry_names.append(re.sub(r"\s*season\s*[0-9]*\s*", "", entry_name, flags=re.IGNORECASE))
+                additional_entry_names.append(re.sub(r"\s*season\s*[0-9]+\s*", "", entry_name, flags=re.IGNORECASE))
 
                 # Remove all instances of word "season" with ordinal number prefix
                 additional_entry_names.append(re.sub(r"\s*[0-9]*[st|nd|rd|th]+\s*season\s*", "", entry_name, flags=re.IGNORECASE))
@@ -81,13 +94,23 @@ class RssFeedManager:
 
         return extended_entries_names
 
-# rss_manager = RssFeedManager()
-# extended_entries_names = rss_manager.extend_entry_names_list(ENTRIES_NAMES)
-# formatted_entry_names = rss_manager.format_entry_names_list(extended_entries_names)
-# url_list = rss_manager.get_entry_urls(formatted_entry_names)
-# print(json.dumps(url_list, indent=2))
+def main() -> None:
+    test_entries = [
+        [ "Vinland Saga Season 2" ],
+        [ "Heavenly Delusion", "Tengoku Daimakyou" ],
+        [ "Paradition", "Hell's Paradise", "Jigokuraku", "Heavenhell" ],
+        [ "Kimetsu no Yaiba: Katanakaji no Sato-hen", "Demon Slayer: Kimetsu no Yaiba Swordsmith Village Arc" ],
+        [ "Not-existing-stuff", "huehue: hue", "testeroni 95th season" ]
+    ]
 
-# TODO: colored text
-# print("\033[91m" + "This text is red" + "\033[0m")
-# print("\033[92m" + "This text is green" + "\033[0m")
-# print("\033[94m" + "This text is blue" + "\033[0m")
+    rss_manager = RssFeedManager()
+    extended_entries_names = rss_manager.extend_entry_names_list(test_entries)
+    formatted_entry_names = rss_manager.format_entry_names_list(extended_entries_names)
+    url_list = rss_manager.get_entry_urls(formatted_entry_names)
+
+    print("List of entry URLs:")
+    for url in url_list:
+        print(url)
+
+if __name__ == "__main__":
+    main()
