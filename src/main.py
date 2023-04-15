@@ -59,7 +59,7 @@ def main() -> None:
 
     combined_url_text = "\n".join(url_list)
     print("\nFinal URL list:")
-    print(f"{Fore.LIGHTGREEN_EX}{combined_url_text}{Fore.RESET}")
+    print(f"{Fore.GREEN}{combined_url_text}{Fore.RESET}")
 
     pyperclip.copy(combined_url_text)
     print("\nURL list has been copied to the clipboard!")
