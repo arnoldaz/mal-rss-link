@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 from typing import Any
 from urllib.parse import urlencode
+import asyncio
 
 import requests
 from dotenv import load_dotenv
@@ -24,6 +25,11 @@ class MalEntryManager:
     def _get_mal_json_response(self, url: str) -> dict[str, Any]:
         """Returns JSON response from passed URL using MAL API header."""
         return requests.get(url, headers=self.mal_api_header).json()
+
+    async def _get_async_mal_json_response(self, url: str, loop: asyncio.AbstractEventLoop) -> dict[str, Any]:
+        """Returns JSON response asynchronously from passed URL using MAL API header."""
+        response = await loop.run_in_executor(None, lambda: requests.get(url, headers=self.mal_api_header))
+        return response.json()
 
     def _get_current_cour(self) -> tuple[str, int]:
         """Returns current cour data as a tuple of season and year."""
@@ -48,6 +54,15 @@ class MalEntryManager:
         query_params = { "fields": ["id", "title", "alternative_titles", "start_season", "status"] }
         url = f"{self.mal_anime_details_url}/{id}?{urlencode(query_params)}"
         return self._get_mal_json_response(url)
+
+    async def get_all_entry_details(self, ids: list[int]) -> list[dict[str, Any]]:
+        """Gets more detailed info asynchronously about list of specific entryes by given Ids."""
+        query_params = { "fields": ["id", "title", "alternative_titles", "start_season", "status"] }   
+        urls = [f"{self.mal_anime_details_url}/{id}?{urlencode(query_params)}" for id in ids]
+        loop = asyncio.get_event_loop()
+        tasks = [loop.create_task(self._get_async_mal_json_response(url, loop)) for url in urls]
+        responses = await asyncio.gather(*tasks)
+        return responses
 
     def get_entry_list_ids(self) -> list[int]:
         """Gets a list of MAL entry Ids from user watching and plan to watch sections."""
@@ -83,7 +98,7 @@ class MalEntryManager:
         print(f"Calculated current cour to {Fore.CYAN}{year} {season}{Fore.RESET}")
 
         print("Querying detailed info for each entry...")
-        entries_details = [self.get_entry_details(id) for id in entryIds]
+        entries_details = asyncio.run(self.get_all_entry_details(entryIds))
 
         print("Filtering queried detailed user entries by current cour...")
         filtered_entries_details = filter(lambda entry: self._entry_airing_filter(entry, season, year), entries_details)
