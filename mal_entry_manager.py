@@ -1,9 +1,9 @@
+import asyncio
 import json
 import os
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import urlencode
-import asyncio
 
 import requests
 from dotenv import load_dotenv
@@ -92,18 +92,25 @@ class MalEntryManager:
 
         return (entry_season == season and entry_year == year) or entry_status == "currently_airing"
 
-    def get_filtered_entry_names(self, entryIds: list[int]) -> list[list[str]]:
+    def get_filtered_entry_names(self, entryIds: list[int], cour: Optional[tuple[str, int]] = None) -> list[list[str]]:
         """Filters entries to only current season or currently airing and returns list of lists of their names."""
-        season, year = self._get_current_cour()
-        print(f"Calculated current cour to {Fore.CYAN}{year} {season}{Fore.RESET}")
+        if cour is not None and all(data is not None for data in cour):
+            season, year = cour
+            print(f"Using passed cour {Fore.CYAN}{year} {season}{Fore.RESET}")
+        else:
+            season, year = self._get_current_cour()
+            print(f"Calculated current cour to {Fore.CYAN}{year} {season}{Fore.RESET}")
 
         print("Querying detailed info for each entry...")
         entries_details = asyncio.run(self.get_all_entry_details(entryIds))
 
-        print("Filtering queried detailed user entries by current cour...")
-        filtered_entries_details = filter(lambda entry: self._entry_airing_filter(entry, season, year), entries_details)
+        print("Filtering queried detailed user entries by current/passed cour or currently airing...")
+        filtered_entries_details = [entry for entry in entries_details if self._entry_airing_filter(entry, season, year)]
+
         entries_names: list[list[str]] = [[entry["title"], entry["alternative_titles"]["en"], *entry["alternative_titles"]["synonyms"]] for entry in filtered_entries_details]
-        print(f"Filtered to {Fore.CYAN}{len(entries_names)}{Fore.RESET} entries")
+        print(f"Filtered to {Fore.CYAN}{len(entries_names)}{Fore.RESET} entries:")
+        for filtered_entry in filtered_entries_details:
+            print(f"  {Fore.CYAN}{filtered_entry['title']}{Fore.RESET}")
 
         return [[name for name in set(entry_names) if name] for entry_names in entries_names]
 

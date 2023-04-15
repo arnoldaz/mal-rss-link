@@ -41,13 +41,13 @@ class RssFeedManager:
 
                 if not requires_entries or self._feed_has_entries(potential_url):
                     if requires_entries:
-                        print("Found entries for:")
+                        print("Found RSS feed entries for:")
                         print(f"{indent}Combined name:")
                         print(f"{indent * 2}{Fore.CYAN}{entry_name}{Fore.RESET}")
                         print(f"{indent}Subber:")
                         print(f"{indent * 2}{Fore.BLUE if subber == self.SUBBER_LIST[0] else Fore.YELLOW}{subber}{Fore.RESET}")
                     else:
-                        print("Added URL with default subber:")
+                        print("Added RSS feed URL with default subber:")
                         print(f"{indent}Combined name:")
                         print(f"{indent * 2}{Fore.CYAN}{entry_name}{Fore.RESET}")
                         print(f"{indent}Subber:")
@@ -58,7 +58,7 @@ class RssFeedManager:
                     break
             
             if not found_url:
-                print(f"{Fore.RED}Not found any entries for:{Fore.RESET}")
+                print(f"{Fore.RED}Not found any RSS feed entries for:{Fore.RESET}")
                 print(f"{indent}Combined name:")
                 print(f"{indent * 2}{Fore.CYAN}{entry_name}{Fore.RESET}")
 
