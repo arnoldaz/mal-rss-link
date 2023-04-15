@@ -21,7 +21,7 @@ def parse_arguments() -> argparse.Namespace:
         parser.error("Both season (--season) and year (--year) parameters must be specified or not specified together")
     
     if args.year and (args.year < 1970 or args.year > 2050):
-        parser.error("Year parameter is not a valid year")
+        parser.error("Year (--year) parameter is not a valid year")
     
     return args
 

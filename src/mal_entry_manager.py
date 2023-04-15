@@ -104,7 +104,7 @@ class MalEntryManager:
         print("Querying detailed info for each entry...")
         entries_details = asyncio.run(self.get_all_entry_details(entryIds))
 
-        print("Filtering queried detailed user entries by current/passed cour or currently airing...")
+        print("Filtering queried detailed user entries by cour or if currently airing...")
         filtered_entries_details = [entry for entry in entries_details if self._entry_airing_filter(entry, season, year)]
 
         entries_names: list[list[str]] = [[entry["title"], entry["alternative_titles"]["en"], *entry["alternative_titles"]["synonyms"]] for entry in filtered_entries_details]
