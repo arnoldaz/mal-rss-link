@@ -14,6 +14,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("-i", "--ignore-feed", action="store_true", help="disables checking if entries exist in feed and will return RSS feed URLs with default subber")
     parser.add_argument("-s", "--season", choices=["winter", "spring", "summer", "fall"], help="season of specific cour to be filtered by, must be defined together with year; defaults to current cour if not defined")
     parser.add_argument("-y", "--year", type=int, help="year of specific cour to be filtered by, must be defined together with season; defaults to current cour if not defined")
+    parser.add_argument("-e", "--entry", type=int, help="MAL entry Id to generate RSS URL for; if defined, will not query MAL profile data")
 
     args = parser.parse_args()
 
@@ -49,8 +50,12 @@ def main() -> None:
     client_id, mal_username = initialize()
 
     mal_entry_manager = MalEntryManager(client_id, mal_username)
-    entry_list_ids = mal_entry_manager.get_entry_list_ids()
-    entries_names = mal_entry_manager.get_filtered_entry_names(entry_list_ids, (args.season, args.year))
+
+    if args.entry is not None:
+        entries_names = [mal_entry_manager.get_entry_names(args.entry)]
+    else:
+        entry_list_ids = mal_entry_manager.get_entry_list_ids()
+        entries_names = mal_entry_manager.get_filtered_entry_names(entry_list_ids, (args.season, args.year))
 
     rss_feed_manager = RssFeedManager()
     extended_entries_names = rss_feed_manager.extend_entry_names_list(entries_names)

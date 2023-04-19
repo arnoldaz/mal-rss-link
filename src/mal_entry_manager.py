@@ -96,6 +96,14 @@ class MalEntryManager:
 
         return (entry_season == season and entry_year == year) or entry_status == "currently_airing"
 
+    def get_entry_names(self, entryId: int) -> list[str]:
+        """Get list of entry names."""
+        entry_details = self.get_entry_details(entryId)
+        print("Found entry by Id:")
+        print(f"  {Fore.CYAN}{entry_details['title']}{Fore.RESET}")
+
+        return [entry_details["title"], entry_details["alternative_titles"]["en"], *entry_details["alternative_titles"]["synonyms"]]
+
     def get_filtered_entry_names(self, entryIds: list[int], cour: Optional[tuple[str, int]] = None) -> list[list[str]]:
         """Filters entries to only current season or currently airing and returns list of lists of their names."""
         if cour is not None and all(data is not None for data in cour):
