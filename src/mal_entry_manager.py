@@ -74,10 +74,14 @@ class MalEntryManager:
         url = f"{self.mal_anime_list_url}?{urlencode(watching_query_params)}"
         watching_json_data = self._get_mal_json_response(url)["data"]
         print(f"Found {Fore.CYAN}{len(watching_json_data)}{Fore.RESET} entries from watching list")
+        for watching_entry in watching_json_data:
+            print(f"  {Fore.CYAN}{watching_entry['node']['title']}{Fore.RESET}")
 
         url = f"{self.mal_anime_list_url}?{urlencode(plan_to_watch_query_params)}"
         plan_to_watch_json_data = self._get_mal_json_response(url)["data"]
         print(f"Found {Fore.CYAN}{len(plan_to_watch_json_data)}{Fore.RESET} entries from plan to watch list")
+        for plan_to_watch_entry in plan_to_watch_json_data:
+            print(f"  {Fore.CYAN}{plan_to_watch_entry['node']['title']}{Fore.RESET}")
 
         return [entry["node"]["id"] for entry in watching_json_data + plan_to_watch_json_data]
 
