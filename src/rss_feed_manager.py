@@ -41,7 +41,7 @@ class RssFeedManager:
 
                 if not requires_entries or self._feed_has_entries(potential_url):
                     if requires_entries:
-                        print("Found RSS feed entries for:")
+                        print(f"{Fore.GREEN}+ Found RSS feed entries for:{Fore.RESET}")
                         print(f"{indent}Combined name:")
                         print(f"{indent * 2}{Fore.CYAN}{entry_name}{Fore.RESET}")
                         print(f"{indent}Subber:")
@@ -58,7 +58,7 @@ class RssFeedManager:
                     break
             
             if not found_url:
-                print(f"{Fore.RED}Not found any RSS feed entries for:{Fore.RESET}")
+                print(f"{Fore.RED}- Not found any RSS feed entries for:{Fore.RESET}")
                 print(f"{indent}Combined name:")
                 print(f"{indent * 2}{Fore.CYAN}{entry_name}{Fore.RESET}")
 
@@ -78,7 +78,7 @@ class RssFeedManager:
             for entry_name in entry_names:
                 # Postfix after colon is not always used in naming, additionally add only part before colon
                 if ":" in entry_name:
-                    first_part, _ = entry_name.split(":")
+                    first_part, _ = entry_name.split(":", 1)
                     additional_entry_names.append(first_part)
                 
                 # Remove all instances of word "season" with a number afterwards
