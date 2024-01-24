@@ -1,9 +1,10 @@
-import re
+from typing import Optional
 import xml.etree.ElementTree as ET
 from urllib.parse import urlencode
-
 import requests
 from colorama import Fore
+
+from rss_feed_modifications import DEFAULT_MODIFICATION_LIST, RssEntryModification
 
 class RssFeedManager:
     
@@ -15,84 +16,66 @@ class RssFeedManager:
 
     BASE_QUERY_PARAMS = { "page": "rss", "c": "1_2" }
 
-    def __init__(self):
-        pass
-    
+    LOG_INDENT = "  "
+
+    def __init__(self, modifications: list[RssEntryModification]):
+        self.modifications = modifications
+
     def _feed_has_entries(self, rss_url: str) -> bool:
         """Checks whether RSS feed has any entries."""
         response = requests.get(rss_url)
         root = ET.fromstring(response.content)
         return len(root.findall(".//item")) > 0
     
-    def get_entry_urls(self, entry_names: list[str], requires_entries = True) -> list[str]:
-        """
-        Gets entry RSS feed URL list from entry names list.
+    def _build_url(self, entry_name: str, subber: str) -> str:
+        query_params = { "q": f"{entry_name} {subber} {self.RESOLUTION_PARAM} {self.EXCLUDE_BATCH_PARAM}", **self.BASE_QUERY_PARAMS }
+        return f"{self.BASE_NYAA_URL}?{urlencode(query_params)}"
 
-        :param list[str] entry_names: List of combined entry names.
-        :param bool requires_entries: Checks RSS feed will all possible subbers and will only add URL to the list if feed has any entries.
-        """
-        indent = "  "
-        url_list = []
+    def _log_found_entry(self, entry_name: str, subber: str, requires_entries: bool, modification_description: Optional[str] = None) -> None:
+        intro_text = "Found RSS feed entries for:" if requires_entries else "Added default RSS feed URL:"
+        print(f"{Fore.GREEN}{intro_text}{Fore.RESET}")
+
+        print(f"{self.LOG_INDENT}Searched name: {Fore.CYAN}{entry_name}{Fore.RESET}")
+        print(f"{self.LOG_INDENT}Subber: {Fore.BLUE if subber == self.SUBBER_LIST[0] else Fore.YELLOW}{subber}{Fore.RESET}")
+
+        if modification_description:
+            print(f"{self.LOG_INDENT}Modification: {Fore.YELLOW}{modification_description}{Fore.RESET}")
+
+    def _log_not_found_entry(self, entry_names: list[str]) -> None:
+        print(f"{Fore.RED}Not found any RSS feed entries for:{Fore.RESET}")
+        print(f"{self.LOG_INDENT}Searched names:")
         for entry_name in entry_names:
-            found_url = False
-            for subber in self.SUBBER_LIST:
-                query_params = { "q": f"{entry_name} {self.RESOLUTION_PARAM} {self.EXCLUDE_BATCH_PARAM} {subber}", **self.BASE_QUERY_PARAMS }
-                potential_url = f"{self.BASE_NYAA_URL}?{urlencode(query_params)}"
+           print(f"{self.LOG_INDENT * 2}{Fore.CYAN}{entry_name}{Fore.RESET}") 
 
-                if not requires_entries or self._feed_has_entries(potential_url):
-                    if requires_entries:
-                        print(f"{Fore.GREEN}+ Found RSS feed entries for:{Fore.RESET}")
-                        print(f"{indent}Combined name:")
-                        print(f"{indent * 2}{Fore.CYAN}{entry_name}{Fore.RESET}")
-                        print(f"{indent}Subber:")
-                        print(f"{indent * 2}{Fore.BLUE if subber == self.SUBBER_LIST[0] else Fore.YELLOW}{subber}{Fore.RESET}")
-                    else:
-                        print("Added RSS feed URL with default subber:")
-                        print(f"{indent}Combined name:")
-                        print(f"{indent * 2}{Fore.CYAN}{entry_name}{Fore.RESET}")
-                        print(f"{indent}Subber:")
-                        print(f"{indent * 2}{Fore.BLUE}{subber}{Fore.RESET}")
-
-                    url_list.append(potential_url)
-                    found_url = True
-                    break
-            
-            if not found_url:
-                print(f"{Fore.RED}- Not found any RSS feed entries for:{Fore.RESET}")
-                print(f"{indent}Combined name:")
-                print(f"{indent * 2}{Fore.CYAN}{entry_name}{Fore.RESET}")
-
-        return url_list
-        
-    def format_entry_names_list(self, entries_names: list[list[str]]) -> list[str]:
-        """Combines all names for each entry into single string by wrapping it in parentheses and dividing them with vertical bars."""
-        return ["|".join([f"({name})" for name in entry_names]) for entry_names in entries_names]
-
-    def extend_entry_names_list(self, entries_names: list[list[str]]) -> list[list[str]]:
-        """Extends names list for each entry by reformating already existing names to cover more various subber naming schemes."""
-        extended_entries_names = []
-
-        for entry_names in entries_names:
-            additional_entry_names = []
-
+    def get_entry_url(self, entry_names: list[str], requires_entries = True) -> Optional[str]:
+        for subber in self.SUBBER_LIST:
+            # Search all unmodified names first
             for entry_name in entry_names:
-                # Postfix after colon is not always used in naming, additionally add only part before colon
-                if ":" in entry_name:
-                    first_part, _ = entry_name.split(":", 1)
-                    additional_entry_names.append(first_part)
-                
-                # Remove all instances of word "season" with a number afterwards
-                additional_entry_names.append(re.sub(r"\s*season\s*[0-9]+\s*", "", entry_name, flags=re.IGNORECASE))
+                url = self._build_url(entry_name, subber)
 
-                # Remove all instances of word "season" with ordinal number prefix
-                additional_entry_names.append(re.sub(r"\s*[0-9]*[st|nd|rd|th]+\s*season\s*", "", entry_name, flags=re.IGNORECASE))
+                if not requires_entries or self._feed_has_entries(url):
+                    self._log_found_entry(entry_name, subber, requires_entries)
+                    return url
 
-                # Remove all punctuation
-                additional_entry_names.append(re.sub(r"[^\w\s]", "", entry_name))
+            # Search all modifications in a row
+            for modification in self.modifications:
+                modified_entry_names = [modification.callback(entry_name) for entry_name in entry_names]
+                flattened_modified_entry_names = [entry_name for single_entry_names in modified_entry_names for entry_name in single_entry_names]
 
-            extended_entries_names.append(list(set(entry_names + additional_entry_names)))
+                for entry_name in flattened_modified_entry_names:
+                    url = self._build_url(entry_name, subber)
 
-        return extended_entries_names
+                    if not requires_entries or self._feed_has_entries(url):
+                        self._log_found_entry(entry_name, subber, requires_entries, modification.description)
+                        return url
+
+        self._log_not_found_entry(entry_names)
+        return None
+
+    def get_all_entries_urls(self, entry_list_names: list[list[str]], requires_entries = True) -> list[str]:
+        all_entries_urls = [self.get_entry_url(entry_names, requires_entries) for entry_names in entry_list_names]
+        return [url for url in all_entries_urls if url is not None]
+
 
 def main() -> None:
     test_entries = [
@@ -100,15 +83,14 @@ def main() -> None:
         [ "Heavenly Delusion", "Tengoku Daimakyou" ],
         [ "Paradition", "Hell's Paradise", "Jigokuraku", "Heavenhell" ],
         [ "Kimetsu no Yaiba: Katanakaji no Sato-hen", "Demon Slayer: Kimetsu no Yaiba Swordsmith Village Arc" ],
-        [ "Not-existing-stuff", "huehue: hue", "testeroni 95th season" ]
+        [ "Not-existing-stuff", "huehue: hue", "testeroni 95th season" ],
+        [ "Shin no Nakama ja Nai to Yuusha no Party wo Oidasareta node, Henkyou de Slow Life suru Koto ni Shimashita 2nd", "Banished From The Hero's Party, I Decided To Live A Quiet Life In The Countryside Season 2" ],
     ]
 
-    rss_manager = RssFeedManager()
-    extended_entries_names = rss_manager.extend_entry_names_list(test_entries)
-    formatted_entry_names = rss_manager.format_entry_names_list(extended_entries_names)
-    url_list = rss_manager.get_entry_urls(formatted_entry_names)
+    rss_manager = RssFeedManager(DEFAULT_MODIFICATION_LIST)
+    url_list = rss_manager.get_all_entries_urls(test_entries)
 
-    print("List of entry URLs:")
+    print("\nList of entry URLs:")
     for url in url_list:
         print(url)
 

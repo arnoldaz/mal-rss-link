@@ -8,6 +8,7 @@ import pyperclip
 
 from mal_entry_manager import MalEntryManager
 from rss_feed_manager import RssFeedManager
+from rss_feed_modifications import DEFAULT_MODIFICATION_LIST
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="MAL RSS link", description="Creates list of RSS URLs based on MAL user entry lists.")
@@ -38,11 +39,11 @@ def initialize():
 
     if not client_id:
         print("Error: CLIENT_ID is not configured in environment file")
-        sys.exit(0)
+        sys.exit(-1)
 
     if not mal_username:
         print("Error: MAL_USERNAME is not configured in environment file")
-        sys.exit(0)
+        sys.exit(-1)
 
     return client_id, mal_username
 
@@ -60,10 +61,8 @@ def main() -> None:
         entry_list_ids = mal_entry_manager.get_entry_list_ids()
         entries_names = mal_entry_manager.get_filtered_entry_names(entry_list_ids, (args.season, args.year))
 
-    rss_feed_manager = RssFeedManager()
-    extended_entries_names = rss_feed_manager.extend_entry_names_list(entries_names)
-    formatted_entry_names = rss_feed_manager.format_entry_names_list(extended_entries_names)
-    url_list = rss_feed_manager.get_entry_urls(formatted_entry_names, not args.ignore_feed)
+    rss_feed_manager = RssFeedManager(DEFAULT_MODIFICATION_LIST)
+    url_list = rss_feed_manager.get_all_entries_urls(entries_names, not args.ignore_feed)
 
     combined_url_text = "\n".join(url_list)
     print("\nFinal URL list:")
