@@ -66,7 +66,7 @@ class MalEntryManager:
 
     def get_entry_list_ids(self) -> list[int]:
         """Gets a list of MAL entry Ids from user watching and plan to watch sections."""
-        base_query_params = { "limit": 1000, "sort": "anime_start_date" }
+        base_query_params = { "limit": 1000, "sort": "anime_start_date", "nsfw": True }
         watching_query_params = { "status": "watching", **base_query_params }
         plan_to_watch_query_params = { "status": "plan_to_watch", **base_query_params }
 
